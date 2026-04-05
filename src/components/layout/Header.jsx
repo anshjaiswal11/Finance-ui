@@ -1,40 +1,33 @@
 import { useLocation } from 'react-router-dom';
-import { Sun, Moon, Menu, Download } from 'lucide-react';
+import { Sun, Moon, Menu, Download, Bell } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { ROLES } from '../../data/mockData';
 import './Header.css';
 
 const PAGE_TITLES = {
   '/':             { title: 'Dashboard',     subtitle: 'Welcome back! Here is your financial overview.' },
-  '/transactions': { title: 'Transactions',  subtitle: 'Manage and track all your financial transactions.' },
+  '/transactions': { title: 'Transactions',  subtitle: 'Manage and track all your financial records.' },
   '/insights':     { title: 'Insights',      subtitle: 'Understand your spending patterns and trends.' },
 };
 
 export default function Header({ onMenuOpen }) {
   const { state, dispatch } = useApp();
   const { role, darkMode, transactions } = state;
+  const isAdmin  = role === 'admin';
   const location = useLocation();
+  const page     = PAGE_TITLES[location.pathname] || PAGE_TITLES['/'];
 
-  const page = PAGE_TITLES[location.pathname] || PAGE_TITLES['/'];
-
-  const handleRoleChange = (e) => {
-    dispatch({ type: 'SET_ROLE', payload: e.target.value });
-  };
+  const handleRoleChange = e => dispatch({ type: 'SET_ROLE', payload: e.target.value });
 
   const handleExport = () => {
     const csv = [
-      ['Date', 'Description', 'Category', 'Type', 'Amount'],
-      ...transactions.map(t => [t.date, t.description, t.category, t.type, t.amount]),
-    ]
-      .map(row => row.join(','))
-      .join('\n');
-
+      ['Date', 'Description', 'Category', 'Type', 'Amount', 'Notes'],
+      ...transactions.map(t => [t.date, t.description, t.category, t.type, t.amount, t.notes || '']),
+    ].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'transactions.csv';
-    a.click();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'transactions.csv'; a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -53,13 +46,8 @@ export default function Header({ onMenuOpen }) {
       <div className="header-right">
         {/* Role switcher */}
         <div className="role-switcher">
-          <label className="role-label">Role:</label>
-          <select
-            className="role-select"
-            value={role}
-            onChange={handleRoleChange}
-            id="role-switcher"
-          >
+          <span className="role-avatar-sm">{role === 'admin' ? '👑' : '👁️'}</span>
+          <select className="role-select" value={role} onChange={handleRoleChange} id="role-switcher">
             {Object.entries(ROLES).map(([key, label]) => (
               <option key={key} value={key}>{label}</option>
             ))}
@@ -68,9 +56,19 @@ export default function Header({ onMenuOpen }) {
 
         {/* Export */}
         <button className="btn btn-secondary btn-sm header-btn" onClick={handleExport} title="Export CSV">
-          <Download size={15} />
+          <Download size={14} />
           <span className="btn-text">Export</span>
         </button>
+
+        {/* Notification Bell – Admin only */}
+        {isAdmin && (
+          <div className="notif-wrap" title="3 budget alerts">
+            <button className="btn btn-secondary btn-icon">
+              <Bell size={17} />
+            </button>
+            <span className="notif-badge">3</span>
+          </div>
+        )}
 
         {/* Dark mode toggle */}
         <button

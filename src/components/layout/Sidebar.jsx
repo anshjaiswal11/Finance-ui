@@ -1,7 +1,10 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, ArrowLeftRight, Lightbulb, TrendingUp, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { getSummaryStats } from '../../data/mockData';
 import './Sidebar.css';
+
+const fmt = v => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v);
 
 const navItems = [
   { path: '/',             label: 'Dashboard',    icon: LayoutDashboard },
@@ -11,12 +14,14 @@ const navItems = [
 
 export default function Sidebar({ open, onClose }) {
   const { state } = useApp();
-  const { role } = state;
+  const { role, transactions } = state;
   const location = useLocation();
+  const stats = getSummaryStats(transactions);
+
+  const currentMonthNet = stats.currentMonthNet;
 
   return (
     <>
-      {/* Mobile overlay */}
       {open && <div className="sidebar-overlay" onClick={onClose} />}
 
       <aside className={`sidebar ${open ? 'open' : ''}`}>
@@ -36,7 +41,7 @@ export default function Sidebar({ open, onClose }) {
 
         {/* Navigation */}
         <nav className="sidebar-nav">
-          <p className="nav-section-label">MENU</p>
+          <p className="nav-section-label">NAVIGATION</p>
           {navItems.map(({ path, label, icon: Icon }) => (
             <NavLink
               key={path}
@@ -45,12 +50,35 @@ export default function Sidebar({ open, onClose }) {
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
               onClick={onClose}
             >
-              <Icon size={18} />
+              <Icon size={17} />
               <span>{label}</span>
+              {path === '/transactions' && (
+                <span className="nav-count-badge">{transactions.length}</span>
+              )}
               {path === location.pathname && <span className="nav-active-dot" />}
             </NavLink>
           ))}
         </nav>
+
+        {/* Quick Stats */}
+        <div className="sidebar-quick-stats">
+          <div className="qs-row">
+            <span className="qs-label">Total Balance</span>
+            <span className="qs-value">{fmt(stats.totalBalance)}</span>
+          </div>
+          <div className="qs-row">
+            <span className="qs-label">This Month Net</span>
+            <span className={`qs-value ${currentMonthNet >= 0 ? 'positive' : 'negative'}`}>
+              {currentMonthNet >= 0 ? '+' : '−'}{fmt(Math.abs(currentMonthNet))}
+            </span>
+          </div>
+          <div className="qs-row">
+            <span className="qs-label">Savings Rate</span>
+            <span className={`qs-value ${stats.savingsRate >= 20 ? 'positive' : 'negative'}`}>
+              {stats.savingsRate}%
+            </span>
+          </div>
+        </div>
 
         {/* Role badge */}
         <div className="sidebar-footer">
