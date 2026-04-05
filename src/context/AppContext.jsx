@@ -1,24 +1,27 @@
 import { createContext, useContext, useReducer, useEffect } from 'react';
-import { mockTransactions } from '../data/mockData';
+import { mockTransactions, DEFAULT_BUDGETS } from '../data/mockData';
 
 const getInitialState = () => {
-  const savedRole = localStorage.getItem('fin_role') || 'viewer';
-  const savedDark = localStorage.getItem('fin_dark') === 'true';
-  const savedTxns = localStorage.getItem('fin_transactions');
-  const transactions = savedTxns ? JSON.parse(savedTxns) : mockTransactions;
+  const savedRole   = localStorage.getItem('fin_role')   || 'viewer';
+  const savedDark   = localStorage.getItem('fin_dark')   === 'true';
+  const savedTxns   = localStorage.getItem('fin_transactions');
+  const savedBudgets= localStorage.getItem('fin_budgets');
 
   return {
-    role: savedRole,              // 'admin' | 'viewer'
-    transactions,
-    darkMode: savedDark,
+    role:         savedRole,
+    transactions: savedTxns    ? JSON.parse(savedTxns)    : mockTransactions,
+    budgets:      savedBudgets ? JSON.parse(savedBudgets) : { ...DEFAULT_BUDGETS },
+    darkMode:     savedDark,
     filters: {
-      search: '',
+      search:   '',
       category: 'All',
-      type: 'All',               // 'All' | 'income' | 'expense'
+      type:     'All',
       dateFrom: '',
-      dateTo: '',
-      sortBy: 'date',            // 'date' | 'amount' | 'category'
-      sortDir: 'desc',           // 'asc' | 'desc'
+      dateTo:   '',
+      amountMin: '',
+      amountMax: '',
+      sortBy:   'date',
+      sortDir:  'desc',
     },
     currentPage: 1,
   };
@@ -35,8 +38,9 @@ function appReducer(state, action) {
     case 'ADD_TRANSACTION': {
       const newTxn = {
         ...action.payload,
-        id: Date.now(),
+        id:     Date.now(),
         amount: parseFloat(action.payload.amount),
+        notes:  action.payload.notes || '',
       };
       return { ...state, transactions: [newTxn, ...state.transactions] };
     }
@@ -62,13 +66,9 @@ function appReducer(state, action) {
       return {
         ...state,
         filters: {
-          search: '',
-          category: 'All',
-          type: 'All',
-          dateFrom: '',
-          dateTo: '',
-          sortBy: 'date',
-          sortDir: 'desc',
+          search: '', category: 'All', type: 'All',
+          dateFrom: '', dateTo: '', amountMin: '', amountMax: '',
+          sortBy: 'date', sortDir: 'desc',
         },
         currentPage: 1,
       };
@@ -78,6 +78,12 @@ function appReducer(state, action) {
 
     case 'RESET_TRANSACTIONS':
       return { ...state, transactions: mockTransactions };
+
+    case 'SET_BUDGET':
+      return {
+        ...state,
+        budgets: { ...state.budgets, [action.payload.category]: action.payload.value },
+      };
 
     default:
       return state;
@@ -89,20 +95,11 @@ const AppContext = createContext(null);
 export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(appReducer, undefined, getInitialState);
 
-  // Persist to localStorage
-  useEffect(() => {
-    localStorage.setItem('fin_role', state.role);
-  }, [state.role]);
+  useEffect(() => { localStorage.setItem('fin_role',         state.role);                              }, [state.role]);
+  useEffect(() => { localStorage.setItem('fin_dark',         state.darkMode);                          }, [state.darkMode]);
+  useEffect(() => { localStorage.setItem('fin_transactions', JSON.stringify(state.transactions));       }, [state.transactions]);
+  useEffect(() => { localStorage.setItem('fin_budgets',      JSON.stringify(state.budgets));            }, [state.budgets]);
 
-  useEffect(() => {
-    localStorage.setItem('fin_dark', state.darkMode);
-  }, [state.darkMode]);
-
-  useEffect(() => {
-    localStorage.setItem('fin_transactions', JSON.stringify(state.transactions));
-  }, [state.transactions]);
-
-  // Apply dark mode class to <html>
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', state.darkMode ? 'dark' : 'light');
   }, [state.darkMode]);
